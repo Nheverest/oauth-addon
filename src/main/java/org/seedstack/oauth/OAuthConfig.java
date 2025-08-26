@@ -7,9 +7,6 @@
  */
 package org.seedstack.oauth;
 
-import org.seedstack.coffig.Config;
-
-import javax.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,6 +15,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.validation.constraints.NotNull;
+
+import org.seedstack.coffig.Config;
 
 @Config("security.oauth")
 public class OAuthConfig {
@@ -47,6 +48,7 @@ public class OAuthConfig {
     private String additionalPermissionsClaim;
     private String customAccessTokenHeader;
     private boolean discloseUnauthorizedReason = true;
+    private String principalRoleName;
 
     public ProviderConfig provider() {
         return provider;
@@ -318,4 +320,13 @@ public class OAuthConfig {
             return this;
         }
     }
+
+    public String getPrincipalRoleName() {
+        return principalRoleName;
+    }
+
+    public void setPrincipalRoleName(String principalRoleName) {
+        this.principalRoleName = principalRoleName;
+    }
+
 }

@@ -80,7 +80,7 @@ public class OAuthCallbackFilter extends AuthenticatingFilter implements Session
     protected boolean onAccessDenied(ServletRequest request, ServletResponse response) throws Exception {
         boolean loggedIn = executeLogin(request, response);
         if (!loggedIn) {
-            LOGGER.debug("User unauthorized: " + OAuthUtils.formatUnauthorizedMessage(request, oauthConfig.isDiscloseUnauthorizedReason()));
+            LOGGER.debug("User unauthorized yet");
         }
         return loggedIn;
     }

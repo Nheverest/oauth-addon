@@ -7,23 +7,39 @@
  */
 package org.seedstack.oauth.internal;
 
+import java.lang.reflect.Array;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.inject.Inject;
+import javax.inject.Named;
+
+import org.seedstack.oauth.AccessClaims;
+import org.seedstack.oauth.OAuthAuthenticationToken;
+import org.seedstack.oauth.OAuthConfig;
+import org.seedstack.oauth.OAuthService;
+import org.seedstack.oauth.TokenValidationResult;
+import org.seedstack.seed.Configuration;
+import org.seedstack.seed.security.AuthenticationException;
+import org.seedstack.seed.security.AuthenticationInfo;
+import org.seedstack.seed.security.AuthenticationToken;
+import org.seedstack.seed.security.Realm;
+import org.seedstack.seed.security.RoleMapping;
+import org.seedstack.seed.security.RolePermissionResolver;
+import org.seedstack.seed.security.principals.PrincipalProvider;
+import org.seedstack.seed.security.principals.Principals;
+import org.seedstack.seed.security.principals.SimplePrincipalProvider;
+
 import com.google.common.base.Strings;
 import com.nimbusds.oauth2.sdk.Scope;
 import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.claims.PersonClaims;
 import com.nimbusds.openid.connect.sdk.claims.UserInfo;
-import org.seedstack.oauth.*;
-import org.seedstack.seed.Configuration;
-import org.seedstack.seed.security.*;
-import org.seedstack.seed.security.principals.PrincipalProvider;
-import org.seedstack.seed.security.principals.Principals;
-import org.seedstack.seed.security.principals.SimplePrincipalProvider;
-
-import javax.inject.Inject;
-import javax.inject.Named;
-import java.lang.reflect.Array;
-import java.util.*;
-import java.util.stream.Collectors;
 
 public class OAuthRealm implements Realm {
     @Configuration
@@ -59,6 +75,9 @@ public class OAuthRealm implements Realm {
         String additionalRolesClaim = oAuthConfig.getAdditionalRolesClaim();
         if (!Strings.isNullOrEmpty(additionalRolesClaim)) {
             result.addAll(accessClaimToStrings(otherPrincipals, additionalRolesClaim));
+        }
+        if (!Strings.isNullOrEmpty(oAuthConfig.getPrincipalRoleName())) {
+            result.addAll(accessClaimToStrings(otherPrincipals, oAuthConfig.getPrincipalRoleName()));
         }
         return result;
     }
@@ -149,18 +168,13 @@ public class OAuthRealm implements Realm {
     }
 
     private Set<String> scopesToStrings(Collection<PrincipalProvider<?>> otherPrincipals) {
-        return Optional.ofNullable(Principals.getOnePrincipalByType(otherPrincipals, Scope.class))
-                .map(PrincipalProvider::get)
-                .map(Scope::toStringList)
-                .map(HashSet::new)
-                .orElse(new HashSet<>());
+        return Optional.ofNullable(Principals.getOnePrincipalByType(otherPrincipals, Scope.class)).map(PrincipalProvider::get)
+                .map(Scope::toStringList).map(HashSet::new).orElse(new HashSet<>());
     }
 
     private Set<String> accessClaimToStrings(Collection<PrincipalProvider<?>> otherPrincipals, String claim) {
-        return Optional.ofNullable(Principals.getOnePrincipalByType(otherPrincipals, AccessClaims.class))
-                .map(PrincipalProvider::get)
-                .map(accessClaims -> accessClaims.get(claim))
-                .map(claimObj -> {
+        return Optional.ofNullable(Principals.getOnePrincipalByType(otherPrincipals, AccessClaims.class)).map(PrincipalProvider::get)
+                .map(accessClaims -> accessClaims.get(claim)).map(claimObj -> {
                     if (claimObj.getClass().isArray()) {
                         Set<String> res = new HashSet<>();
                         for (int i = 0; i < Array.getLength(claimObj); i++) {
@@ -168,15 +182,32 @@ public class OAuthRealm implements Realm {
                         }
                         return res;
                     } else if (claimObj instanceof Collection) {
-                        return ((Collection<?>) claimObj).stream()
-                                .map(String::valueOf)
-                                .collect(Collectors.toSet());
+                        return ((Collection<?>) claimObj).stream().map(String::valueOf).collect(Collectors.toSet());
                     } else {
                         Set<String> res = new HashSet<>();
                         res.add(String.valueOf(claimObj));
                         return res;
                     }
-                })
-                .orElse(new HashSet<>());
+                }).orElse(new HashSet<>());
     }
+
+    private Set<String> roleClaimToStrings(Collection<PrincipalProvider<?>> otherPrincipals, String claim) {
+        return Optional.ofNullable(Principals.getOnePrincipalByType(otherPrincipals, AccessClaims.class)).map(PrincipalProvider::get)
+                .map(accessClaims -> accessClaims.get(claim)).map(claimObj -> {
+                    if (claimObj.getClass().isArray()) {
+                        Set<String> res = new HashSet<>();
+                        for (int i = 0; i < Array.getLength(claimObj); i++) {
+                            res.add(String.valueOf(Array.get(claimObj, i)));
+                        }
+                        return res;
+                    } else if (claimObj instanceof Collection) {
+                        return ((Collection<?>) claimObj).stream().map(String::valueOf).collect(Collectors.toSet());
+                    } else {
+                        Set<String> res = new HashSet<>();
+                        res.add(String.valueOf(claimObj));
+                        return res;
+                    }
+                }).orElse(new HashSet<>());
+    }
+
 }
