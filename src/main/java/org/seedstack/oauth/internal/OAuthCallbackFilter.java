@@ -69,14 +69,19 @@ public class OAuthCallbackFilter extends AuthenticatingFilter implements Session
     protected boolean onAccessDenied(ServletRequest request, ServletResponse response) throws Exception {
         boolean loggedIn = executeLogin(request, response);
         if (!loggedIn) {
-            try {
-                ((HttpServletResponse) response).sendError(
-                        HttpServletResponse.SC_UNAUTHORIZED,
-                        OAuthUtils.formatUnauthorizedMessage(request, oauthConfig.isDiscloseUnauthorizedReason())
-                );
-            } catch (IOException e1) {
-                LOGGER.debug("Unable to send {} HTTP code to client", HttpServletResponse.SC_UNAUTHORIZED, e1);
+            if (inTomcat()) {
+                // Workaround for Tomcat which does not handle 401 responses properly
+                LOGGER.debug("User unauthorized yet");
+            } else {
+                try {
+                    ((HttpServletResponse) response).sendError(
+                            HttpServletResponse.SC_UNAUTHORIZED,
+                            OAuthUtils.formatUnauthorizedMessage(request, oauthConfig.isDiscloseUnauthorizedReason()));
+                } catch (IOException e1) {
+                    LOGGER.debug("Unable to send {} HTTP code to client", HttpServletResponse.SC_UNAUTHORIZED, e1);
+                }
             }
+
         }
         return loggedIn;
     }
@@ -134,4 +139,16 @@ public class OAuthCallbackFilter extends AuthenticatingFilter implements Session
         }
         return map;
     }
+
+    private boolean inTomcat() {
+        try {
+            Class.forName("org.apache.catalina.core.ApplicationFilterChain");
+            return true;
+            // Present in classpath
+        } catch (ClassNotFoundException e) {
+            // Not present in classpath
+        }
+        return false;
+    }
+
 }
