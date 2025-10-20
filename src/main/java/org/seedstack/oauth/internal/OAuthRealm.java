@@ -60,6 +60,9 @@ public class OAuthRealm implements Realm {
         if (!Strings.isNullOrEmpty(additionalRolesClaim)) {
             result.addAll(accessClaimToStrings(otherPrincipals, additionalRolesClaim));
         }
+        if (!Strings.isNullOrEmpty(oAuthConfig.getPrincipalRoleName())) {
+            result.addAll(accessClaimToStrings(otherPrincipals, oAuthConfig.getPrincipalRoleName()));
+        }
         return result;
     }
 
